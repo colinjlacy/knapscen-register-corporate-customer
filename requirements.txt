@@ -1,0 +1,6 @@
+# Corporate Entity Registration Dependencies
+# MySQL database connectivity
+mysql-connector-python==8.2.0
+
+# NATS JetStream messaging
+nats-py==2.7.2
