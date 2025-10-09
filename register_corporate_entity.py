@@ -6,7 +6,7 @@ This script registers a new corporate entity in the database and publishes
 an event to NATS JetStream with the registration details.
 
 Environment Variables Required:
-- ORIGINAL_EVENT: The original event that triggered this script
+- COMPANY_DATA: The full company data in JSON format
 - COMPANY_NAME: Name of the corporate entity
 - SUBSCRIPTION_TIER: Subscription tier (basic, groovy, far-out)
 - DB_HOST: Database host
@@ -62,9 +62,9 @@ class CorporateEntityRegistrar:
         self.db_config = self._load_db_config()
         self.nats_config = self._load_nats_config()
         
-    def _load_company_info(self) -> Dict[str, str]:
+    def _load_company_info(self) -> Dict[str, Any]:
         """Load company information from environment variables"""
-        required_vars = ['COMPANY_NAME', 'SUBSCRIPTION_TIER']
+        required_vars = ['COMPANY_DATA', 'COMPANY_NAME', 'SUBSCRIPTION_TIER']
         company_info = {}
         
         for var in required_vars:
@@ -72,6 +72,12 @@ class CorporateEntityRegistrar:
             if not value:
                 raise ValueError(f"Required environment variable {var} not set")
             company_info[var.lower().replace('_', '')] = value
+            
+        # Parse COMPANY_DATA JSON string into a dict
+        try:
+            company_info['companydata'] = json.loads(company_info['companydata'])
+        except json.JSONDecodeError as e:
+            raise ValueError(f"Invalid JSON in COMPANY_DATA: {e}")
             
         # Validate subscription tier
         valid_tiers = ['basic', 'groovy', 'far-out']
@@ -183,14 +189,20 @@ class CorporateEntityRegistrar:
             # Create JetStream context
             js = nc.jetstream()
             
-            # Prepare event payload (exclude sensitive connection info)
+            # Prepare CloudEvents payload
             event_data = {
-                'event_type': 'corporate_entity_registered',
-                'timestamp': datetime.utcnow().isoformat(),
-                'customer_id': customer_id,
-                'company_name': self.company_info['companyname'],
-                'subscription_tier': self.company_info['subscriptiontier'],
-                'source': 'corporate-entity-registrar'
+                'specversion': '1.0',
+                'type': 'disco.knapscen.customer.saved',
+                'source': 'knapscen.disco',
+                'subject': customer_id,
+                'id': f'evt-customer-{customer_id[:8]}',
+                'time': datetime.utcnow().isoformat() + 'Z',
+                'datacontenttype': 'application/json',
+                'data': {
+                    'name': self.company_info['companyname'],
+                    'subscription_tier': self.company_info['subscriptiontier'],
+                    'users': self.company_info['companydata'].get('users', [])
+                }
             }
             
             # Publish to JetStream
