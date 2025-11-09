@@ -194,7 +194,7 @@ class CorporateEntityRegistrar:
                 'type': 'disco.knapscen.customer.saved',
                 'source': 'knapscen.disco',
                 'subject': customer_id,
-                'id': uuid.uuid4(),
+                'id': str(uuid.uuid4())[:8],
                 'time': datetime.now(timezone.utc).isoformat(),
                 'datacontenttype': 'application/json',
                 'data': {
