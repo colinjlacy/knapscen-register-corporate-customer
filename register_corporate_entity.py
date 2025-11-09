@@ -26,14 +26,13 @@ import sys
 import json
 import logging
 import asyncio
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Dict, Any, Optional
 import uuid
 
 import mysql.connector
 from mysql.connector import Error
 import nats
-from nats.js import JetStreamContext
 
 
 # Configure logging
@@ -195,8 +194,8 @@ class CorporateEntityRegistrar:
                 'type': 'disco.knapscen.customer.saved',
                 'source': 'knapscen.disco',
                 'subject': customer_id,
-                'id': f'evt-customer-{customer_id[:8]}',
-                'time': datetime.utcnow().isoformat() + 'Z',
+                'id': uuid.uuid4(),
+                'time': datetime.now(timezone.utc).isoformat(),
                 'datacontenttype': 'application/json',
                 'data': {
                     'name': self.company_info['companyname'],
